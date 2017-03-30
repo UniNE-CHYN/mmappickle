@@ -138,6 +138,67 @@ class TestKvdata(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 k.memomaxidx = 123
             
+class TestDict(unittest.TestCase):
+    def _dump_file(self, f):
+        f.seek(0, io.SEEK_SET)
+        pickletools.dis(f)        
+        
+    def test_empty(self):
+        with tempfile.TemporaryFile() as f:
+            m = mmapdict(f)
+            
+            f.seek(0)
+            d = pickle.load(f)
+            self.assertDictEqual(d, {})
+            
+    def test_store_simple(self):
+        with tempfile.TemporaryFile() as f:
+            m = mmapdict(f)
+            m['test'] = 'abc'
+            
+            self.assertEqual(m['test'], 'abc')
+            d = pickle.load(f)
+            self.assertDictEqual(d, {'test': 'abc',})
+            
+    def test_store_ref(self):
+        with tempfile.TemporaryFile() as f:
+            obj = "1234"
+            obj2 = "machin"
+            dict_a = {obj: obj, '3': obj,}
+            dict_b = {obj: obj2, obj2: obj2, 2: 4, 4: obj,}
+            m = mmapdict(f)
+            m['dict_a'] = dict_a
+            m['dict_b'] = dict_b
+            
+            self.assertEqual(m['dict_a'], dict_a)
+            self.assertEqual(m['dict_b'], dict_b)
+            d = pickle.load(f)
+            self.assertDictEqual(d, {'dict_a': dict_a, 'dict_b': dict_b,})
+            
+            import collections
+            od = collections.OrderedDict()
+            od['obj'] = obj
+            od['obj2'] = obj2
+            od[obj] = 3
+            m['od'] = od
+            
+            #This should not fail, but will have no effect
+            m['od']['machin'] = 'abc'
+            
+            self.assertEqual(m['od'], od)
+            f.seek(0, io.SEEK_SET)
+            d = pickle.load(f)
+            
+            m['od'] = 'abc'
+            
+            self.assertEqual(m['od'], 'abc')
+            
+            f.seek(0, io.SEEK_SET)
+            d = pickle.load(f)            
+            self.assertEqual(d['od'], 'abc')
+            
+            #self._dump_file(f)
+    
     
 
 if __name__ == '__main__':

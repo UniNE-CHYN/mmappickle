@@ -180,7 +180,15 @@ class _kvdata:
         }
         
     def __len__(self):
-        return len(self._data)
+        return self._frame_length + 9
+    
+    @property
+    def offset(self):
+        return self._offset
+    
+    @property
+    def end_offset(self):
+        return self._offset + len(self)
     
     @property
     def _file(self):
@@ -328,7 +336,7 @@ class _kvdata:
         self._mmapdict()._terminator.write()
         
 class mmapdict:
-    _required_file_methods = ('fileno', 'seek', 'read', 'write', 'writable', 'truncate')
+    _required_file_methods = ('fileno', 'seek', 'read', 'write', 'writable', 'truncate', 'tell')
     
     def __init__(self, file, readonly = None, picklers = None):
         """
@@ -368,6 +376,110 @@ class mmapdict:
         
         self._picklers = list(sorted(picklers, key = lambda x: x.priority, reverse=True))
         
+        #Cache/lock infrastructure
+        self._locked = 0
+        self._cache_commit_number = None
+        self._cache_clear()
+        
     @property
     def writable(self):
         return self._file.writable()
+    
+    @property
+    @lock
+    def commit_number(self):
+        return self._header.commit_number
+    
+    @commit_number.setter
+    @lock
+    def commit_number(self, newvalue):
+        self._header.commit_number = newvalue
+        
+    def _cache_clear(self):
+        self._cache_kv = None
+        self._cache_kv_all = None
+        
+    @property
+    @lock
+    @save_file_position
+    def _kv_all(self):
+        if self._cache_kv_all is None:
+            self._cache_kv_all = []
+            offset = len(self._header)
+            self._file.seek(0, io.SEEK_END)
+            end_offset = self._file.tell() - len(self._terminator)
+            while offset < end_offset:
+                this_kv = _kvdata(self, offset)
+                self._cache_kv_all.append(this_kv)
+                offset += len(this_kv)
+
+        return self._cache_kv_all
+    
+    @property
+    @lock
+    @save_file_position
+    def _kv(self):
+        if self._cache_kv is None:
+            self._cache_kv = {}
+            for k in self._kv_all:
+                if k.valid:
+                    self._cache_kv[k.key] = k
+
+        return self._cache_kv
+    
+    @lock
+    def __contains__(self, k):
+        return k in self._kv
+    
+    @lock
+    def keys(self):
+        return self._kv.keys()
+    
+    @require_writable
+    @lock
+    @save_file_position
+    def __setitem__(self, k, v):
+        if k in self:
+            del self[k]
+            
+        for pickler in self._picklers:
+            if pickler.is_picklable(v):
+                break
+            
+        assert pickler.is_picklable(v)
+            
+        offset = max([x.end_offset for x in self._kv_all] + [len(self._header)])
+        memomaxidx = max([x.memomaxidx for x in self._kv_all] + [1])
+        kv = _kvdata(self, offset)
+        kv.key = k
+        kv.data_length, kv.memomaxidx = pickler.write(v, kv.data_offset, memomaxidx)
+        #Update cache
+        self._cache_kv[kv.key] = kv
+        self._cache_kv_all.append(kv)
+        self.commit_number += 1
+    
+    @lock
+    def __getitem__(self, k):
+        if k not in self:
+            raise KeyError(k)
+            
+        data_offset = self._kv[k].data_offset
+        data_length = self._kv[k].data_length
+        for pickler in self._picklers:
+            if pickler.is_valid(data_offset, data_length):
+                break
+            
+        assert pickler.is_valid(data_offset, data_length)
+        return pickler.read(data_offset, data_length)
+        
+    @require_writable
+    @lock
+    @save_file_position
+    def __delitem__(self, k):
+        if k not in self:
+            raise KeyError(k)
+        
+        self._kv[k].active = False
+        del self._kv[k]
+        self.commit_number += 1
+        

@@ -1,3 +1,5 @@
+import pickle
+import struct
 import pickletools
 import weakref
 
@@ -14,11 +16,10 @@ class BasePickler:
     def _file(self):
         return self._parent_object()._file
     
-    @property
     @save_file_position
-    def is_valid(self):
+    def is_valid(self, offset, length):
         """
-        Return True if object starting at current position in f is valid.
+        Return True if object starting at offset in f is valid.
         
         File position is kept.
         """
@@ -31,12 +32,12 @@ class BasePickler:
         return False
         
     @save_file_position
-    def read(self, length):
-        """Return the unpickled object read from current position. File position is kept."""
+    def read(self, offset, length):
+        """Return the unpickled object read from offset. File position is kept."""
         raise NotImplementedError("Should be subclassed")
     
     @save_file_position
-    def write(self, obj, memo_start_idx = 0):
+    def write(self, obj, offset, memo_start_idx = 0):
         """
         Write the pickled object to the file stream, file position is kept.
         
@@ -116,20 +117,21 @@ class GenericPickler(BasePickler):
     def priority(self):
         return -100
     
-    @property
     @save_file_position
-    def is_valid(self):
+    def is_valid(self, offset, length):
         return True  #catch all
     
     def is_picklable(self, obj):
         return True  #catch all
         
     @save_file_position
-    def read(self, length):
+    def read(self, offset, length):
+        self._file.seek(offset, io.SEEK_SET)
         return self._pickle_load_fix(self._file.read(length))
     
     @save_file_position
-    def write(self, obj, memo_start_idx = 0):
+    def write(self, obj, offset, memo_start_idx = 0):
+        self._file.seek(offset, io.SEEK_SET)
         data, memo_idx = self._pickle_dump_fix(obj, memo_start_idx)
-        f.write(data)
-        return memo_idx
+        data_length = self._file.write(data)
+        return data_length, memo_idx

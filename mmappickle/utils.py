@@ -1,4 +1,5 @@
 import io
+import fcntl
 
 def save_file_position(f):
     def save_file_position_wrapper(self, *a, **kw):
@@ -17,3 +18,25 @@ def require_writable(f):
         return f(self, *a, **kw)
     
     return require_writable_wrapper
+
+def lock(f):
+    def lock_wrapper(self, *a, **kw):
+        self._locked += 1
+        
+        if self._locked == 1:
+            fcntl.flock(self._file, fcntl.LOCK_EX)
+            if self._cache_commit_number != self.commit_number:
+                self._cache_clear()
+                self._cache_commit_number = self.commit_number
+                
+        try:
+            return f(self, *a, **kw)
+        finally:
+            if self._locked == 1:
+                if self.commit_number != self._cache_commit_number:
+                    self._cache_commit_number = self.commit_number
+                    self._file.flush()
+                fcntl.flock(self._file, fcntl.LOCK_UN)
+            self._locked -= 1
+    
+    return lock_wrapper
