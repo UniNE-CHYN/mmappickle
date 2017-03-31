@@ -1,3 +1,4 @@
+import os
 import io, pickle, struct
 import warnings
 import weakref
