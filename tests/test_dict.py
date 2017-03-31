@@ -3,18 +3,23 @@ import tempfile
 import pickle
 import pickletools
 import io
+import numpy
+import numpy.testing
 
 from mmappickle import mmapdict
+from mmappickle.picklers.base import GenericPickler
+from mmappickle.picklers.numpy import ArrayPickler
+from mmappickle.stubs.numpy import EmptyNDArray
 
 class TestDictBase(unittest.TestCase):
     def test_creation(self):
         with tempfile.TemporaryFile() as f:
-            m = mmapdict(f)
+            m = mmapdict(f, picklers = [GenericPickler])
             self.assertTrue(m._header.is_valid())
             
     def test_commit_number(self):
         with tempfile.TemporaryFile() as f:
-            m = mmapdict(f)
+            m = mmapdict(f, picklers = [GenericPickler])
             self.assertEqual(m._header.commit_number, 0)
             self.assertTrue(m._header.is_valid())
             
@@ -28,7 +33,7 @@ class TestDictBase(unittest.TestCase):
             
     def test_valid_pickle(self):
         with tempfile.TemporaryFile() as f:
-            m = mmapdict(f)
+            m = mmapdict(f, picklers = [GenericPickler])
             f.seek(0)
             
             d = pickle.load(f)
@@ -37,7 +42,7 @@ class TestDictBase(unittest.TestCase):
     def test_destructor(self):
         import weakref
         with tempfile.TemporaryFile() as f:
-            m = mmapdict(f)
+            m = mmapdict(f, picklers = [GenericPickler])
             m_ref = weakref.ref(m)
             del m
                 
@@ -145,7 +150,7 @@ class TestDict(unittest.TestCase):
         
     def test_empty(self):
         with tempfile.TemporaryFile() as f:
-            m = mmapdict(f)
+            m = mmapdict(f, picklers = [GenericPickler])
             
             f.seek(0)
             d = pickle.load(f)
@@ -153,7 +158,7 @@ class TestDict(unittest.TestCase):
             
     def test_store_simple(self):
         with tempfile.TemporaryFile() as f:
-            m = mmapdict(f)
+            m = mmapdict(f, picklers = [GenericPickler])
             m['test'] = 'abc'
             
             self.assertEqual(m['test'], 'abc')
@@ -198,7 +203,48 @@ class TestDict(unittest.TestCase):
             self.assertEqual(d['od'], 'abc')
             
             #self._dump_file(f)
-    
+            
+    def test_delitem(self):
+        with tempfile.TemporaryFile() as f:
+            m = mmapdict(f, picklers = [GenericPickler])
+            m['test'] = 'abc'
+            self.assertEqual(m['test'], 'abc')
+            
+            del m['test']
+            with self.assertRaises(KeyError):
+                print(m['test'])
+                
+            #reset
+            m = mmapdict(f)
+            with self.assertRaises(KeyError):
+                print(m['test'])
+                
+            f.seek(0, io.SEEK_SET)
+            d = pickle.load(f)
+            self.assertDictEqual(d, {})
+            
+class TestDictNumpyArray(unittest.TestCase):
+    def _dump_file(self, f):
+        f.seek(0, io.SEEK_SET)
+        pickletools.dis(f)        
+    def test_store_simple(self):
+        with tempfile.TemporaryFile() as f:
+            data = numpy.array([[1, 2, 3], [4, 5, 6]])
+            m = mmapdict(f, picklers = [ArrayPickler, GenericPickler])
+            m['test'] = data
+            self.assertIsInstance(m['test'], numpy.memmap)
+            numpy.testing.assert_array_equal(m['test'], data)
+            f.seek(0)
+            d = pickle.load(f)
+            numpy.testing.assert_array_equal(d['test'], data)
+            
+    def test_store_empty(self):
+        with tempfile.TemporaryFile() as f:
+            m = mmapdict(f, picklers = [ArrayPickler])
+            m['test'] = EmptyNDArray((10, 9), dtype = numpy.float32)
+            
+            self.assertIsInstance(m['test'], numpy.memmap)
+            self.assertEqual(m['test'].shape, (10, 9))
     
 
 if __name__ == '__main__':

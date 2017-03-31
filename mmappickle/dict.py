@@ -373,6 +373,8 @@ class mmapdict:
                 return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
             
             picklers = [x(self) for x in all_subclasses(BasePickler)]
+        else:
+            picklers = [x(self) for x in picklers]
         
         self._picklers = list(sorted(picklers, key = lambda x: x.priority, reverse=True))
         
@@ -442,11 +444,15 @@ class mmapdict:
         if k in self:
             del self[k]
             
+        found = False
         for pickler in self._picklers:
             if pickler.is_picklable(v):
+                found = True
                 break
+        
+        if not found:
+            raise TypeError("Could not find a pickler for element of type {}".format(type(v)))
             
-        assert pickler.is_picklable(v)
             
         offset = max([x.end_offset for x in self._kv_all] + [len(self._header)])
         memomaxidx = max([x.memomaxidx for x in self._kv_all] + [1])
@@ -465,11 +471,14 @@ class mmapdict:
             
         data_offset = self._kv[k].data_offset
         data_length = self._kv[k].data_length
+        found = False
         for pickler in self._picklers:
             if pickler.is_valid(data_offset, data_length):
+                found = True
                 break
             
-        assert pickler.is_valid(data_offset, data_length)
+        if not found:
+            raise ValueError("No picklers are valid to key {!r}".format(k))
         return pickler.read(data_offset, data_length)
         
     @require_writable
@@ -479,7 +488,7 @@ class mmapdict:
         if k not in self:
             raise KeyError(k)
         
-        self._kv[k].active = False
+        self._kv[k].valid = False
         del self._kv[k]
         self.commit_number += 1
         
