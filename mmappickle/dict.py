@@ -480,7 +480,7 @@ class mmapdict:
             
         if not found:
             raise ValueError("No picklers are valid to key {!r}".format(k))
-        return pickler.read(data_offset, data_length)
+        return pickler.read(data_offset, data_length)[0]
         
     @require_writable
     @lock

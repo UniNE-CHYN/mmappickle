@@ -118,8 +118,63 @@ class ArrayPickler(BasePickler):
         #Skip TUPLE2 and REDUCE
         self._file.seek(2, io.SEEK_CUR)
         
-        if '+' in self._file.mode:
-            return numpy.memmap(self._file, dtype=dtype, mode='r+', shape=tuple(shapelist), offset=datastart)
+        length = self._file.tell() - offset
+        
+        if self._file.writable():
+            return numpy.memmap(self._file, dtype=dtype, mode='r+', shape=tuple(shapelist), offset=datastart), length
         else:
-            return numpy.memmap(self._file, dtype=dtype, mode='r', shape=tuple(shapelist), offset=datastart)
+            return numpy.memmap(self._file, dtype=dtype, mode='r', shape=tuple(shapelist), offset=datastart), length
     
+class MaskedArrayPickler(BasePickler):
+    def __init__(self, parent_object):
+        super().__init__(parent_object)
+        self._array_pickler = ArrayPickler(parent_object)
+        self._header = (
+            self._pickle_dump_fix('numpy.ma.core')[0] +
+            self._pickle_dump_fix('MaskedArray')[0] +
+            pickle.STACK_GLOBAL
+        )
+        
+    @save_file_position
+    def is_valid(self, offset, length):
+        self._file.seek(offset, io.SEEK_SET)
+        data = self._file.read(len(self._header))
+        
+        return data == self._header
+    
+    def is_picklable(self, obj):
+        return type(obj) in (numpy.ma.core.MaskedArray, )
+    
+    @property
+    def priority(self):
+        return 100
+    
+    @save_file_position
+    def write(self, obj, offset, memo_start_idx = 0):
+        self._file.seek(offset, io.SEEK_SET)
+        retlength = 0
+        retlength += self._file.write(self._header)
+        retlength += self._array_pickler.write(obj.data, offset + retlength)[0]
+        retlength += self._array_pickler.write(obj.mask, offset + retlength)[0]
+        self._file.seek(offset + retlength)
+        retlength += self._file.write(pickle.TUPLE2+pickle.REDUCE)
+        
+        return retlength, 0
+    
+    @save_file_position
+    def read(self, offset, length):
+        self._file.seek(offset)
+    
+        assert self._file.read(len(self._header)) == self._header
+        data, data_pickle_length = self._array_pickler.read(offset + len(self._header), length - offset + len(self._header))
+        mask, mask_pickle_length = self._array_pickler.read(offset + len(self._header) + data_pickle_length, length - offset + len(self._header) + data_pickle_length)
+        
+        #This works, but is inefficient, since it casts the mask into a ndarray
+        #ret = numpy.ma.core.MaskedArray(data, mask)
+        
+        #FIXME: is it a bad idea?
+        ret = numpy.ma.core.MaskedArray(data, False)
+        ret._mask = mask
+        
+        return ret, len(self._header) + data_pickle_length + mask_pickle_length + 2
+        

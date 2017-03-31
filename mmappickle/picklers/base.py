@@ -33,7 +33,7 @@ class BasePickler:
         
     @save_file_position
     def read(self, offset, length):
-        """Return the unpickled object read from offset. File position is kept."""
+        """Return the unpickled object read from offset, and the length read. File position is kept."""
         raise NotImplementedError("Should be subclassed")
     
     @save_file_position
@@ -127,7 +127,7 @@ class GenericPickler(BasePickler):
     @save_file_position
     def read(self, offset, length):
         self._file.seek(offset, io.SEEK_SET)
-        return self._pickle_load_fix(self._file.read(length))
+        return self._pickle_load_fix(self._file.read(length)), length
     
     @save_file_position
     def write(self, obj, offset, memo_start_idx = 0):

@@ -8,7 +8,7 @@ import numpy.testing
 
 from mmappickle import mmapdict
 from mmappickle.picklers.base import GenericPickler
-from mmappickle.picklers.numpy import ArrayPickler
+from mmappickle.picklers.numpy import ArrayPickler, MaskedArrayPickler
 from mmappickle.stubs.numpy import EmptyNDArray
 
 class TestDictBase(unittest.TestCase):
@@ -245,6 +245,18 @@ class TestDictNumpyArray(unittest.TestCase):
             
             self.assertIsInstance(m['test'], numpy.memmap)
             self.assertEqual(m['test'].shape, (10, 9))
+            
+    def test_store_masked(self):
+        with tempfile.TemporaryFile() as f:
+            data = numpy.ma.MaskedArray([[1, 2, 3], [4, 5, 6]], [[False, True, False], [True, False, True]])
+            m = mmapdict(f, picklers = [MaskedArrayPickler])
+            m['test'] = data
+            self.assertIsInstance(m['test'].data, numpy.memmap)
+            self.assertIsInstance(m['test'].mask, numpy.memmap)
+            numpy.testing.assert_array_equal(m['test'], data)
+            f.seek(0)
+            d = pickle.load(f)
+            numpy.testing.assert_array_equal(d['test'], data)
     
 
 if __name__ == '__main__':
