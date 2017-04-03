@@ -493,3 +493,51 @@ class mmapdict:
         del self._kv[k]
         self.commit_number += 1
         
+    @require_writable
+    @lock
+    @save_file_position
+    def vacuum(self, chunk_size = 1048576):
+        """
+        Free all deleted keys.
+        
+        CAUTION: NO MMAP SHOULD EXIST ON FILE! (data will be shifted).
+        """
+        holes = []
+        for kv in self._kv_all:
+            assert isinstance(kv, _kvdata)
+            if kv.valid:
+                continue
+            
+            holes.append((kv.offset, kv.end_offset))
+
+        self._file.seek(0, io.SEEK_END)
+        file_size = self._file.tell()
+        #Reverse to get data ranges instead of holes
+        data_ranges = []
+        data_ranges = list(zip([0] + [h[1] for h in holes], [h[0] for h in holes] + [file_size]))
+        data_ranges = [d for d in data_ranges if d[0] != d[1]]
+        
+        if len(data_ranges) == 1:
+            return  #Nothing to do...
+        
+        wptr = 0
+        for data_range in data_ranges:
+            rptr = data_range[0]
+            
+            while rptr < data_range[1]:
+                self._file.seek(rptr, io.SEEK_SET)
+                data = self._file.read(min(data_range[1] - rptr, chunk_size))
+                rptr += len(data)
+                
+                self._file.seek(wptr, io.SEEK_SET)
+                wptr += self._file.write(data)
+                
+        self._file.seek(wptr, io.SEEK_SET)
+        self._file.truncate()
+        
+        self._cache_clear()
+        #Set the commit number to zero, except if it was already 0 (always change it)
+        if self.commit_number == 0:
+            self.commit_number = 1
+        else:
+            self.commit_number = 0

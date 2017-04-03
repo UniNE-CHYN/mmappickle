@@ -258,6 +258,47 @@ class TestDictNumpyArray(unittest.TestCase):
             d = pickle.load(f)
             numpy.testing.assert_array_equal(d['test'], data)
     
+class TestVacuum(unittest.TestCase):
+    def _dump_file(self, f):
+        f.seek(0, io.SEEK_SET)
+        pickletools.dis(f)    
+    def test_vacuum(self):
+        with tempfile.TemporaryFile() as f:
+            m = mmapdict(f, picklers = [GenericPickler])
+            m['a'] = 1
+            m['b'] = 2
+            m['c'] = 3
+            m['d'] = ' ' * 2 * 1024 * 1024
+            m['e'] = 5
+            m['f'] = 6
+            m['g'] = 7
+            m['h'] = 8
+            
+            f.seek(0, io.SEEK_END)
+            fsizebefore = f.tell()
+            
+            del m['b']
+            del m['d']
+            del m['f']
+            del m['g']
+            
+            f.seek(0, io.SEEK_SET)
+            valid_dict = pickle.load(f)
+            
+            self.assertDictEqual(dict(m), valid_dict)
+            
+            f.seek(0, io.SEEK_END)
+            fsizeafterdel = f.tell()
+            
+            self.assertEqual(fsizebefore, fsizeafterdel)
+            
+            m.vacuum()
+            
+            f.seek(0, io.SEEK_END)
+            fsizeaftervacuum = f.tell()
+            
+            self.assertNotEqual(fsizebefore, fsizeaftervacuum)
+            self.assertDictEqual(dict(m), valid_dict)
 
 if __name__ == '__main__':
     unittest.main()
