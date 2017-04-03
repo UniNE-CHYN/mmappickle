@@ -299,6 +299,24 @@ class TestVacuum(unittest.TestCase):
             
             self.assertNotEqual(fsizebefore, fsizeaftervacuum)
             self.assertDictEqual(dict(m), valid_dict)
-
+            
+class TestConvert(unittest.TestCase):
+    def _dump_file(self, f):
+        f.seek(0, io.SEEK_SET)
+        pickletools.dis(f)    
+    def test_vacuum(self):
+        with tempfile.TemporaryFile() as f:
+            d = {
+                'a': 1,
+                'b': (1, 2, 3),
+                'c': 'test',
+            }
+            pickle.dump(d, f)
+            
+            m = mmapdict(f, picklers = [GenericPickler])
+            self.assertDictEqual(dict(m), d)
+            
+            self._dump_file(f)
+            
 if __name__ == '__main__':
     unittest.main()

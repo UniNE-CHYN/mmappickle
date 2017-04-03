@@ -21,8 +21,9 @@ class _header:
     _commit_number_position = 18
     
     
-    def __init__(self, mmapdict):
+    def __init__(self, mmapdict, _real_header_starts_at = 0):
         self._mmapdict = weakref.ref(mmapdict)
+        self._real_header_starts_at = _real_header_starts_at
         
         #Check if we have a valid header
         if not self.exists:
@@ -36,7 +37,7 @@ class _header:
     @save_file_position
     def exists(self):
         """This returns True if the file contains at least two bytes"""
-        self._file.seek(0, io.SEEK_SET)
+        self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         newvalue = self._file.read(2)
         return len(newvalue) == 2
     
@@ -49,13 +50,13 @@ class _header:
             pickle.MARK
         
         header = pickle.PROTO + struct.pack('<B', 4) + pickle.FRAME + struct.pack('<Q', len(data)) + data
-        self._file.seek(0, io.SEEK_SET)
+        self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         self._file.write(header)
         
         
     @save_file_position
     def is_valid(self):
-        self._file.seek(0, io.SEEK_SET)
+        self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         if self._file.read(1) != pickle.PROTO:
             warnings.warn("File is not a pickle file")
             return False
@@ -104,7 +105,7 @@ class _header:
     @property
     @save_file_position
     def commit_number(self):
-        self._file.seek(self._commit_number_position, io.SEEK_SET)
+        self._file.seek(self._real_header_starts_at + self._commit_number_position, io.SEEK_SET)
         return struct.unpack('<i', self._file.read(4))[0]
     
     
@@ -115,12 +116,12 @@ class _header:
         if type(newvalue) != int:
             raise TypeError('commit_number should be an int')
         
-        self._file.seek(self._commit_number_position, io.SEEK_SET)
+        self._file.seek(self._real_header_starts_at + self._commit_number_position, io.SEEK_SET)
         self._file.write(struct.pack('<i', newvalue))
         
     def __len__(self):
         #Pickle header, FRAME + frame_length + frame data
-        return 2 + 9 + self._frame_length
+        return self._real_header_starts_at + 2 + 9 + self._frame_length
     
 class _terminator:
     """Terminator is the following pickle ops:
@@ -384,6 +385,10 @@ class mmapdict:
         self._cache_commit_number = None
         self._cache_clear()
         
+        #Ensure it's a valid file
+        if not self._header.is_valid():
+            self._convert_file()
+        
     @property
     def writable(self):
         return self._file.writable()
@@ -541,3 +546,46 @@ class mmapdict:
             self.commit_number = 1
         else:
             self.commit_number = 0
+
+    @require_writable
+    def _convert_file(self, chunk_size = 1048576):
+        warnings.warn("Converting to new format... this may require a LOT of memory...")
+        
+        self._file.seek(0)
+        data = pickle.load(self._file)
+        
+        if type(data) != dict:
+            raise ValueError("Could not load a pickle which is not a dictionnary")
+        
+        end_of_pickle = self._file.tell()
+        
+        #Now, write a header at the end of the pickle
+        #This has the advantage of not destroying the file if it fails due to not enough memory
+        self._file.truncate()
+        self._header = _header(self, _real_header_starts_at=end_of_pickle)
+        
+        #Write all data in the new format
+        for k in data.keys():
+            self[k] = data[k]
+            
+        #Move data to the beginning of the file (this is where a failure may be bad ;-)
+        self._file.seek(0, io.SEEK_END)
+        data_length = self._file.tell() - end_of_pickle
+        
+        wptr = 0
+        rptr = end_of_pickle
+        while wptr < data_length:
+            self._file.seek(rptr, io.SEEK_SET)
+            data = self._file.read(min(chunk_size, data_length - wptr))
+            rptr += len(data)
+            self._file.seek(wptr)
+            wptr += self._file.write(data)
+            
+        assert wptr == data_length
+        self._file.seek(wptr)
+        self._file.truncate()
+        
+        self._header = _header(self)
+        self._cache_clear()
+        self.vacuum(chunk_size)  #Normally not needed, but should not harm
+
