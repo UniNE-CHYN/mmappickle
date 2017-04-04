@@ -592,3 +592,11 @@ class mmapdict:
         self._cache_clear()
         self.vacuum(chunk_size)  #Normally not needed, but should not harm
 
+if __name__ == '__main__':
+    import sys
+    from .picklers import *
+    if len(sys.argv) != 2:
+        print("If run directly, this script requires exactly one argument, and converts it to the latest mmapdict format.")
+        sys.exit(1)
+    
+    m = mmapdict(sys.argv[1])
