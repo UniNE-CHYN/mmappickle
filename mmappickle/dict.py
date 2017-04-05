@@ -391,6 +391,34 @@ class mmapdict:
         #Ensure it's a valid file
         if not self._header.is_valid():
             self._convert_file()
+            
+    def __getstate__(self):
+        """ This is called before pickling. """
+        state = self.__dict__.copy()
+        filename = state['_file'].name
+        filemode = state['_file'].mode
+        filemode = filemode.replace('w', 'r')  #Do not allow w+ modes (would destroy file)
+        state['_file'] = (filename, filemode)
+        state['_header'] = None
+        state['_terminator'] = None
+        state['_locked'] = 0
+        state['_cache_commit_number'] = None
+        state['_cache_kv'] = None
+        state['_cache_kv_all'] = None
+        state['_picklers'] = [x.__class__ for x in state['_picklers']]
+        
+        return state
+    
+    def __setstate__(self, state):
+        """ This is called while unpickling. """
+        state['_file'] = open(state['_file'][0], state['_file'][1])
+        self.__dict__.update(state)
+        
+        self._picklers = [x(self) for x in self._picklers]
+        
+        self._header = _header(self)
+        self._terminator = _terminator(self)
+        
         
     @property
     def writable(self):
