@@ -165,6 +165,15 @@ class TestDict(unittest.TestCase):
             d = pickle.load(f)
             self.assertDictEqual(d, {'test': 'abc',})
             
+    def test_readonly(self):
+        with tempfile.NamedTemporaryFile() as f:
+            m = mmapdict(f.name, picklers = [GenericPickler])
+            m['test'] = 'abc'
+            self.assertEqual(m['test'], 'abc')
+            
+            m2 = mmapdict(f.name, readonly = True, picklers = [GenericPickler])
+            self.assertEqual(m2['test'], 'abc')
+            
     def test_store_ref(self):
         with tempfile.TemporaryFile() as f:
             obj = "1234"

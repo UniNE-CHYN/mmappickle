@@ -353,7 +353,7 @@ class mmapdict:
         #Open the file if f is a string.
         if type(file) == str:
             if readonly:
-                if os.path.exists(path):
+                if os.path.exists(file):
                     self._file = open(file, 'rb')
                 else:
                     raise FileNotFoundError("Cannot readonly memmap a non-existent file {!r}".format(file))
