@@ -619,6 +619,55 @@ class mmapdict:
         self._header = _header(self)
         self._cache_clear()
         self.vacuum(chunk_size)  #Normally not needed, but should not harm
+        
+    @require_writable
+    def fsck(self):
+        self._file.seek(0, io.SEEK_END)
+        end_offset = self._file.tell()
+        
+        self._file.seek(2, io.SEEK_SET)
+        frame_id = 0
+        while True:
+            frame_start = self._file.tell()
+            frame_id += 1
+            
+            print("Frame (?) {} starting at {}".format(frame_id, frame_start))
+            
+            data = self._file.read(9)
+            if data[0] != pickle.FRAME[0]:
+                raise ValueError("Not on frame boundary")
+            frame_length = struct.unpack('<Q', data[1:9])[0]
+            if frame_start + 10 + frame_length > end_offset:
+                print("Incomplete frame starting at {}".format(frame_start))
+                break
+            
+            if frame_id == 1:
+                print("[header]")
+                self._file.seek(frame_start + frame_length + 9, io.SEEK_SET)
+                continue
+            
+            first_data = self._file.read(1)
+            
+            if first_data == pickle.DICT:
+                print("[terminator]")
+                self._file.seek(frame_start + frame_length + 9 - 1, io.SEEK_SET)
+                terminator = self._file.read(1)
+                if terminator != pickle.STOP:
+                    raise ValueError("Pickle doesn't end with stop!")
+                break
+            
+            if first_data != pickle.SHORT_BINUNICODE:
+                print("Frame starts with {}".format(first_data))
+                break
+            
+            key_length = self._file.read(1)[0]
+                
+            print("Frame [{}]".format(self._file.read(key_length).decode('utf8')))
+            self._file.seek(frame_start + frame_length + 9, io.SEEK_SET)
+            
+        self._file.truncate()
+        self._terminator.write()
+        
 
 if __name__ == '__main__':
     import sys

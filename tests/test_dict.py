@@ -318,5 +318,9 @@ class TestConvert(unittest.TestCase):
             
             self._dump_file(f)
             
+    def test_broken(self):
+        #FIXME: implement a test with a broken file, then .fsck() it
+        pass
+            
 if __name__ == '__main__':
     unittest.main()
