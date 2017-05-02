@@ -207,7 +207,7 @@ class _kvdata:
     @property
     @save_file_position
     def _exists_initial(self):
-        """This returns True if the file contains at least two bytes"""
+        """This returns True if the file contains a frame"""
         self._file.seek(self._offset, io.SEEK_SET)
         data = self._file.read(10)
         if len(data) < 10:
@@ -570,6 +570,7 @@ class mmapdict:
                 
         self._file.seek(wptr, io.SEEK_SET)
         self._file.truncate()
+        self._terminator.write()
         
         self._cache_clear()
         #Set the commit number to zero, except if it was already 0 (always change it)
