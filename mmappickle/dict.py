@@ -357,10 +357,11 @@ class mmapdict:
                     self._file = open(file, 'rb')
                 else:
                     raise FileNotFoundError("Cannot readonly memmap a non-existent file {!r}".format(file))
-            if os.path.exists(file):
-                self._file = open(file, 'rb+')
             else:
-                self._file = open(file, 'wb+')
+                if os.path.exists(file):
+                    self._file = open(file, 'rb+')
+                else:
+                    self._file = open(file, 'wb+')
         else:
             if not all(hasattr(file, x) for x in mmapdict._required_file_methods):
                 raise TypeError('f should be a str, or have a the following methods: {}'.format(', '.join(mmapdict._required_file_methods)))
