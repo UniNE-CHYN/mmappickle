@@ -266,6 +266,20 @@ class TestDictNumpyArray(unittest.TestCase):
             f.seek(0)
             d = pickle.load(f)
             numpy.testing.assert_array_equal(d['test'], data)
+            
+    def test_masked_bug(self):
+        with tempfile.TemporaryFile() as f:
+            data = numpy.random.rand(100)
+            data = numpy.ma.masked_invalid(data)
+            m = mmapdict(f, picklers = [MaskedArrayPickler])
+            m['test'] = data
+            self.assertIsInstance(m['test'].data, numpy.memmap)
+            self.assertIsInstance(m['test'].mask, numpy.memmap)
+            numpy.testing.assert_array_equal(m['test'], data)
+            self._dump_file(f)
+            f.seek(0)
+            d = pickle.load(f)
+            numpy.testing.assert_array_equal(d['test'], data)
     
 class TestVacuum(unittest.TestCase):
     def _dump_file(self, f):
