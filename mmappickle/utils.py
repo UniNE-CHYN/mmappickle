@@ -26,13 +26,17 @@ def lock(f):
         if self._locked == 1:
             try:
                 fcntl.flock(self._file, fcntl.LOCK_EX)
+                lock_failed = False
             except OSError:
                 #Cannot lock?
-                self._locked = 0
+                lock_failed = True
                 
             if self._cache_commit_number != self.commit_number:
                 self._cache_clear()
                 self._cache_commit_number = self.commit_number
+
+            if lock_failed:
+                self._locked = 0
                 
         try:
             return f(self, *a, **kw)
