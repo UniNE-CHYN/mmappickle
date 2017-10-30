@@ -30,6 +30,9 @@ def lock(f):
             except OSError:
                 #Cannot lock?
                 lock_failed = True
+            except ValueError:
+                #Cannot lock? not a valid file descriptor
+                lock_failed = True
                 
             if self._cache_commit_number != self.commit_number:
                 self._cache_clear()
