@@ -6,15 +6,18 @@ import weakref
 from .utils import * 
 
 class _header:
-    """The file header consists in the following pickle ops:
-    PROTO 4                           (pickle version 4 header)
-    FRAME <length>
-    BININT <_file_version_number:32> POP
-        (version of the pickle dict)
-    BININT <_file_commit_number:32> POP
-        (commit id of the pickle dict, incremented every time something changes)
-    <additional data depending on the _file_version_number>
-    MARK (start of the dictionnary)
+    """The file header is at the beginning of the file.
+    
+    It consists in the following pickle ops:
+    
+    ::
+    
+      PROTO 4                                (pickle version 4 header)
+      FRAME <length>
+      BININT <_file_version_number:32> POP   (version of the pickle dict, 1)
+      BININT <_file_commit_number:32> POP    (commit id of the pickle dict, incremented every time something changes)
+      <additional data depending on the _file_version_number> (none, for version 1)
+      MARK                                   (start of the dictionnary)
     """
     _file_version_number = 1
     _frame_length = 13
@@ -22,6 +25,10 @@ class _header:
     
     
     def __init__(self, mmapdict, _real_header_starts_at = 0):
+        """
+        :param mmapdict: mmapdict object containing the data
+        :param _real_header_starts_at: Offset of the header (normally not used)
+        """        
         self._mmapdict = weakref.ref(mmapdict)
         self._real_header_starts_at = _real_header_starts_at
         
@@ -36,7 +43,9 @@ class _header:
     @property
     @save_file_position
     def exists(self):
-        """This returns True if the file contains at least two bytes"""
+        """
+        :returns: True if file contains at least two bytes
+        """
         self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         newvalue = self._file.read(2)
         return len(newvalue) == 2
@@ -56,6 +65,7 @@ class _header:
         
     @save_file_position
     def is_valid(self):
+        """:returns: True if file is a valid mmapdict pickle header, False otherwise."""        
         self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         if self._file.read(1) != pickle.PROTO:
             warnings.warn("File is not a pickle file")
@@ -105,6 +115,7 @@ class _header:
     @property
     @save_file_position
     def commit_number(self):
+        """Commit number (revision) in the file"""
         self._file.seek(self._real_header_starts_at + self._commit_number_position, io.SEEK_SET)
         return struct.unpack('<i', self._file.read(4))[0]
     
@@ -120,18 +131,27 @@ class _header:
         self._file.write(struct.pack('<i', newvalue))
         
     def __len__(self):
+        """:returns: the total length of the header."""
         #Pickle header, FRAME + frame_length + frame data
         return self._real_header_starts_at + 2 + 9 + self._frame_length
     
 class _terminator:
-    """Terminator is the following pickle ops:
-    FRAME 2
-    DICT (make the dictionnary)
-    STOP (end of the file)
+    """Terminator is the suffix at the end of the mmapdict file.
+    
+    It consists is the following pickle ops:
+    
+    ::
+    
+      FRAME 2
+      DICT (make the dictionnary)
+      STOP (end of the file)
     """
     _data = pickle.FRAME + struct.pack('<Q', 2) + pickle.DICT + pickle.STOP
     
     def __init__(self, mmapdict):
+        """
+        :param mmapdict: mmapdict object containing the data
+        """
         self._mmapdict = weakref.ref(mmapdict)
         
         #Check if we have a valid header
@@ -139,6 +159,7 @@ class _terminator:
             self.write()
         
     def __len__(self):
+        """:returns: the length of the terminator"""
         return len(self._data)
     
     @property
@@ -148,7 +169,7 @@ class _terminator:
     @property
     @save_file_position
     def exists(self):
-        """This returns True if the file contains at least two bytes"""
+        """:returns: True if the file ends with the terminator, False otherwise"""
         self._file.seek(-len(self._data), io.SEEK_END)
         newvalue = self._file.read(len(self._data))
         return newvalue == self._data
@@ -156,6 +177,7 @@ class _terminator:
     @require_writable
     @save_file_position
     def write(self):
+        """Write the terminator at the end of the file, if it doesn't exist"""
         #Do not write two terminators
         if self.exists:
             return
@@ -164,14 +186,31 @@ class _terminator:
         self._file.write(self._data)
         
 class _kvdata:
-    """kvdata is the structure holding a key-value data entry. It has the following pickle ops:
-    FRAME <length>
-    SHORT_BINUNICODE <length> <key bytes>
-    <<< data >>>
-    BININT <max memo idx> POP (max memo index of this part)
-    NEWTRUE|POP POP (if NEWTRUE POP: entry is valid, else entry is deactivated.)
+    """kvdata is the structure holding a key-value data entry.
+    
+    The trick is that it should be either two values, key and value, or nothing, if the value is deleted.
+    
+    To do this, we put on the stack the key, the value, and then we either push a NEWTRUE+POP (which results in a NO-OP),
+    or we push a POP+POP (which removes both the key and the value). Since NEWTRUE and POP both have length 1, it is easy
+    to make the substitution.
+    
+    Another trick is that we cache the maximum value of the memoization index (for GET and PUT), to ensure that we have no duplicates.
+    
+    The _kvdata structure has the following pickle ops:
+    
+    ::
+    
+      FRAME <length>
+      SHORT_BINUNICODE <length> <key bytes>
+      <<< data >>>
+      BININT <max memo idx> POP (max memo index of this part)
+      NEWTRUE|POP POP (if NEWTRUE POP: entry is valid, else entry is deactivated.)
     """    
     def __init__(self, mmapdict, offset):
+        """
+        :param mmapdict: mmapdict object containing the data
+        :param offset: Offset of the key-value data
+        """
         self._mmapdict = weakref.ref(mmapdict)
         self._offset = offset
         self._exists = self._exists_initial
@@ -182,14 +221,17 @@ class _kvdata:
         }
         
     def __len__(self):
+        """:returns: the length of the key-value data"""
         return self._frame_length + 9
     
     @property
     def offset(self):
+        """:returns: the offset in file of the key-value data"""
         return self._offset
     
     @property
     def end_offset(self):
+        """:returns: the end-offset in file of the key-value data"""
         return self._offset + len(self)
     
     @property
@@ -199,6 +241,12 @@ class _kvdata:
     @property
     @save_file_position
     def _frame_length(self):
+        """
+        
+        :returns: the frame length for this _kvdata.
+        
+        This is done either by reading it in the file, or by computing it it doesn't exists"""
+        
         if not self._exists:
             return 2 + self.key_length + self.data_length + 1 + 4 + 1 + 1 + 1
         self._file.seek(self._offset + 1, io.SEEK_SET)
@@ -207,7 +255,7 @@ class _kvdata:
     @property
     @save_file_position
     def _exists_initial(self):
-        """This returns True if the file contains a frame"""
+        """:returns: True if the file contains the header of the frame"""
         self._file.seek(self._offset, io.SEEK_SET)
         data = self._file.read(10)
         if len(data) < 10:
@@ -216,17 +264,20 @@ class _kvdata:
     
     @property
     def data_length(self):
+        """:returns: True if the file contains the header of the frame"""
         if not self._exists:
             return self._cache['data_length']
         return self._frame_length - 2 - self.key_length - 6 - 2
     
     @property
     def data_offset(self):
+        """:returns: the offset of the pickled data"""
         return self._offset + 9 + 2 + self.key_length
         
     @property
     @save_file_position
     def key_length(self):
+        """:returns: the binary length of the key"""
         if not self._exists:
             return len(self._cache['key'].encode('utf8','surrogatepass'))
         self._file.seek(self._offset + 10)
@@ -234,7 +285,8 @@ class _kvdata:
         
     @property
     @save_file_position
-    def key(self):    
+    def key(self):
+        """:returns: the key as an unicode string"""
         if not self._exists:
             return self._cache['key']
         key_length = self.key_length
@@ -243,11 +295,13 @@ class _kvdata:
     
     @property
     def _valid_offset(self):
+        """:returns: the offset of the valid byte"""
         return self._offset + 9 + self._frame_length - 2
     
     @property
     @save_file_position
-    def valid(self):    
+    def valid(self):
+        """:returns: True if the key-value couple is valid, False otherwise (i.e. key was deleted)"""
         if not self._exists:
             return self._cache['valid']
         self._file.seek(self._valid_offset, io.SEEK_SET)
@@ -255,11 +309,13 @@ class _kvdata:
     
     @property
     def _memomaxidx_offset(self):
+        """:returns: the offset of the max memo index"""
         return self._offset + 9 + self._frame_length - 7
     
     @property
     @save_file_position
-    def memomaxidx(self):    
+    def memomaxidx(self):
+        """:returns: the (cached) max memo index"""
         if not self._exists:
             return self._cache['memomaxidx']
         self._file.seek(self._memomaxidx_offset, io.SEEK_SET)
@@ -310,6 +366,7 @@ class _kvdata:
     @require_writable
     @save_file_position
     def _write_if_allowed(self):
+        """Write to file, if it is possible to do so"""
         #Do not write if it already exists
         if self._exists:
             return
@@ -338,16 +395,18 @@ class _kvdata:
         self._mmapdict()._terminator.write()
         
 class mmapdict:
+    """class to access a mmap-able dictionnary in a file.
+    
+    This class is safe to use in a multi-process environment."""
     _required_file_methods = ('fileno', 'seek', 'read', 'write', 'writable', 'truncate', 'tell')
     
     def __init__(self, file, readonly = None, picklers = None):
         """
         Create or load a mmap dictionnary.
         
-        file is a file-like object or a string representing the name of the file.
-        
-        When using a file name, the optional readonly argument can be used to specify if the file
-        can be written or not.
+        :param file: either a file-like object or a string representing the name of the file.
+        :param readonly: when ``file`` is a string, if True the file will be open in readonly mode.
+        :param picklers: explicit list of picklers. Usually this is not needed (by default, all are used)
         """
         
         #Open the file if f is a string.
@@ -394,7 +453,9 @@ class mmapdict:
             self._convert_file()
             
     def __getstate__(self):
-        """ This is called before pickling. """
+        #This is called before pickling.
+        #It returns the basic state used to create another copy of this mmappickle.
+        #The goal is to be able to pass mmapdict as argument to calls in the multiprocessing module
         state = self.__dict__.copy()
         filename = state['_file'].name
         filemode = state['_file'].mode
@@ -411,7 +472,7 @@ class mmapdict:
         return state
     
     def __setstate__(self, state):
-        """ This is called while unpickling. """
+        #Restore the state and re-open the file
         state['_file'] = open(state['_file'][0], state['_file'][1])
         self.__dict__.update(state)
         
@@ -423,11 +484,20 @@ class mmapdict:
         
     @property
     def writable(self):
+        """True if the file is writable, False otherwise"""
         return self._file.writable()
     
     @property
     @lock
     def commit_number(self):
+        """The monotonically increasing commit number of the :class:`mmapdict`.
+        
+        This is useful to know if the keys have been changed by another process.
+        If the :attr:`commit_number` hasn't changed, it is guaranteed that :meth:`keys` won't be changed.
+        
+        Altough it is possible to set the commit number using this property, there is generally no
+        use for this in external code."""
+        
         return self._header.commit_number
     
     @commit_number.setter
@@ -443,6 +513,7 @@ class mmapdict:
     @lock
     @save_file_position
     def _kv_all(self):
+        #Get all key-value couples in file
         if self._cache_kv_all is None:
             self._cache_kv_all = []
             offset = len(self._header)
@@ -459,6 +530,7 @@ class mmapdict:
     @lock
     @save_file_position
     def _kv(self):
+        #Get only valid key-values couples in file
         if self._cache_kv is None:
             self._cache_kv = {}
             for k in self._kv_all:
@@ -469,16 +541,34 @@ class mmapdict:
     
     @lock
     def __contains__(self, k):
+        """Check if a key exists in dictionnary
+        
+        :params k: Key (string) to check for existence
+        :returns: ``True`` if key exists in dictionnary, ``False`` otherwise.
+        """
         return k in self._kv
     
     @lock
     def keys(self):
+        """:returns: a set-like object providing a view on D's keys"""
         return self._kv.keys()
     
     @require_writable
     @lock
     @save_file_position
     def __setitem__(self, k, v):
+        """Create or change key ``k``, sets its value to ``v``.
+        
+        :param k: key, should be an unicode string of binary length <= 255.
+        :param v: value, any picklable object
+        
+        When replacing a value, this function adds the new key-value pair at the end of the file, and
+        marks the old one as invalid, but leaves the data in place. As a consequence, this function can
+        be used when using the file concurrently from multiple processes. However, other processes may still be
+        using the old value if they don't reload the value from the file.
+        
+        If no concurrent access exists to the file, the old value can be freed using :meth:`vacuum`.
+        """
         if k in self:
             del self[k]
             
@@ -504,6 +594,9 @@ class mmapdict:
     
     @lock
     def __getitem__(self, k):
+        """Get value for key ``k``, raise ``KeyError`` if key doesn't exists in file.
+        
+        If possible, the data will be returned as a mmap'ed object."""
         if k not in self:
             raise KeyError(k)
             
@@ -523,6 +616,17 @@ class mmapdict:
     @lock
     @save_file_position
     def __delitem__(self, k):
+        """Mark key ``k`` as not valid in the file.
+        
+        :param k: key to remove
+        
+        This method marks the key as invalid, but leaves the data in place. As a consequence, this function can
+        be used when using the file concurrently from multiple processes. However, other processes may still be
+        using the value if they don't reload the keys from the file.
+        
+        If no concurrent access exists to the file, the old value can be freed using :meth:`vacuum`.
+        
+        """
         if k not in self:
             raise KeyError(k)
         
@@ -535,9 +639,20 @@ class mmapdict:
     @save_file_position
     def vacuum(self, chunk_size = 1048576):
         """
-        Free all deleted keys.
+        Free all deleted keys, effectively reclaiming disk space.
         
-        CAUTION: NO MMAP SHOULD EXIST ON FILE! (data will be shifted).
+        Only use this function when no mmap exists on the file. Usually it is safer to
+        run it only in part of the code where there is no concurrent access.
+        
+        :param chunk_size: The size of the buffer used to shift data in the file.
+        
+        .. warning::
+        
+            No mmap should exists on this file (both in this python script, and in others), as the data will be shifted.
+            
+            If a mmap exists, it could crash the process and/or corrupt the file and/or return invalid data.
+            
+        
         """
         holes = []
         for kv in self._kv_all:
@@ -624,6 +739,14 @@ class mmapdict:
         
     @require_writable
     def fsck(self):
+        """Attempt to fix the file, if possible.
+        
+        This function should be called if some data could not be written to a file,
+        due to the lack of free disk space, as the resulting file has no termination.
+        
+        .. warning::
+          
+          Calling this function may lead to data loss."""
         self._file.seek(0, io.SEEK_END)
         end_offset = self._file.tell()
         
