@@ -5,7 +5,7 @@ This Python 3 module enable to store large structure in a python :mod:`pickle`, 
 
 Currently, the container has to be a dictionnary (:class:`mmappickle.mmapdict`), which keys are unicode strings of less than 256 bytes.
 
-It supports any values, but it is only possible to memory map :class:`numpy.ndarray` and :class:`numpy.ma.MaskedArray` at present.
+It supports any values, but it is only possible to memory map :class:`numpy.ndarray` and :class:`numpy.ma.MaskedArray` at the present.
 
 It also supports concurrent access (i.e. you can pass a :class:`mmappickle.mmapdict` as an argument which is called using the :mod:`multiprocessing` Python module).
 

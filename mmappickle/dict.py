@@ -194,7 +194,7 @@ class _kvdata:
     or we push a POP+POP (which removes both the key and the value). Since NEWTRUE and POP both have length 1, it is easy
     to make the substitution.
     
-    Another trick is that we cache the maximum value of the memoization index (for GET and PUT), to ensure that we have no duplicates.
+    Another trick is that we cache the maximum value of the memorization index (for GET and PUT), to ensure that we have no duplicates.
     
     The _kvdata structure has the following pickle ops:
     
