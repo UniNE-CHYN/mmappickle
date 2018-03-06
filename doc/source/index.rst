@@ -7,7 +7,7 @@ Currently, the container has to be a dictionnary (:class:`mmappickle.mmapdict`),
 
 It supports any values, but it is only possible to memory map :class:`numpy.ndarray` and :class:`numpy.ma.MaskedArray` at present.
 
-It also supports concurrent access (i.e. you can pass a :class:`mmappickle.mmapdict` an argument which is called using the :mod:`multiprocessing` Python module).
+It also supports concurrent access (i.e. you can pass a :class:`mmappickle.mmapdict` as an argument which is called using the :mod:`multiprocessing` Python module).
 
 Getting help
 ============

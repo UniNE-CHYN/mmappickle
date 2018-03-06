@@ -245,7 +245,7 @@ class _kvdata:
         
         :returns: the frame length for this _kvdata.
         
-        This is done either by reading it in the file, or by computing it it doesn't exists"""
+        This is done either by reading it in the file, or by computing it if it doesn't exists"""
         
         if not self._exists:
             return 2 + self.key_length + self.data_length + 1 + 4 + 1 + 1 + 1
