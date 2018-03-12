@@ -19,3 +19,5 @@ Contributing
 ============
 
 Please post issues and pull requests on github. Alternatively, you can also send your patches by email.
+
+mmappickle uses travis-ci: [![Build Status](https://travis-ci.org/UniNE-CHYN/mmappickle.svg?branch=master)](https://travis-ci.org/UniNE-CHYN/mmappickle)
