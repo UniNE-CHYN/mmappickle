@@ -4,6 +4,6 @@ python:
   - "3.5"
   - "3.6"
 install:
-  - pip install --user .
-  - pip install --user numpy
+  - pip install .
+  - pip install numpy
 script: pytest --ignore tests/test_httpdict.py
