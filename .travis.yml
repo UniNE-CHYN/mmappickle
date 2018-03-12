@@ -1,0 +1,9 @@
+language: python
+python:
+  - "3.4"
+  - "3.5"
+  - "3.6"
+install:
+  - pip install --user .
+  - pip install --user numpy
+script: pytest --ignore tests/test_httpdict.py
