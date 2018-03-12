@@ -3,7 +3,7 @@
 Quick start
 ===========
 
-:class:`mmappickle.mmapdict` behave exactly like dictionaries. For example:
+:class:`mmappickle.mmapdict` behaves like a dictionary. For example:
 
 ::
 
@@ -29,7 +29,7 @@ The contents of the dictionary are stored to disk. For example, in another pytho
     [1, 2, 3]
     
 
-It is also possible to open the file read-only, in which case any modification will fail:
+It is also possible to open the file in read-only mode, in which case any modification will fail:
 
 ::
 
@@ -68,7 +68,7 @@ Unfortunately, the array has to exist in order to serialize it to the ``mmapdict
     >>> print(type(m['test_large']))
     <class 'numpy.core.memmap.memmap'>
 
-The matrix in ``m['test_large']`` uses 216M of memory, but it was at no point allocated in RAM. This way, it is possible to allocate array larger than the size of the memory. One could have written ``m['test_large'] = np.empty((300,300,300))``, but unfortunately the memory is allocated when calling :func:`numpy.empty`.
+The matrix in ``m['test_large']`` uses 216M of memory, but it was at no point allocated in RAM. This way, it is possible to allocate arrays larger than the size of the memory. One could have written ``m['test_large'] = np.empty((300,300,300))``, but unfortunately the memory is allocated when calling :func:`numpy.empty`.
 
 Finally, one last useful trick is the :meth:`mmappickle.mmapdict.vacuum` method. It allows reclaiming the disk space:
 
@@ -81,5 +81,5 @@ Finally, one last useful trick is the :meth:`mmappickle.mmapdict.vacuum` method.
     
 .. warning ::
 
-    When running :meth:`mmappickle.mmapdict.vacuum`, it is crucial that there is no other references to the file content, either in this process or in other.
-    In particular, no memory-mapped array. If this rule is not followed, the result will be very bad! (crash, data corruption, etc.)
+    When running :meth:`mmappickle.mmapdict.vacuum`, it is crucial that there are no other references to the file content, either in this process or in other.
+    In particular, no memory-mapped array. If this rule is not followed, unfortunate outcomes are anticipated! (crash, data corruption, etc.)

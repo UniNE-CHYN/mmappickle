@@ -4,9 +4,9 @@ API Documentation
 *****************
 
 This is the API documentation of the **public** API of mmappickle. 
-These are the function likely to be used when using mmappickle.
+These are the most commonly used functions when using mmappickle.
 
-Developers interested in extending mmappickle, or understanding the inner workings will be interested in reading the page: :doc:`internals`.
+Developers interested in extending mmappickle, or in understanding the inner workings should read the following page: :doc:`internals`.
 
 
 

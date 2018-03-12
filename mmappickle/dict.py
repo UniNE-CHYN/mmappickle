@@ -405,7 +405,7 @@ class mmapdict:
         Create or load a mmap dictionnary.
         
         :param file: either a file-like object or a string representing the name of the file.
-        :param readonly: when ``file`` is a string, if True the file will be open in readonly mode.
+        :param readonly: if ``file`` is a string, the file will be open in readonly mode if set to True.
         :param picklers: explicit list of picklers. Usually this is not needed (by default, all are used)
         """
         
@@ -543,7 +543,7 @@ class mmapdict:
     def __contains__(self, k):
         """Check if a key exists in dictionnary
         
-        :params k: Key (string) to check for existence
+        :param k: Key (string) to check for existence
         :returns: ``True`` if key exists in dictionnary, ``False`` otherwise.
         """
         return k in self._kv
@@ -594,7 +594,7 @@ class mmapdict:
     
     @lock
     def __getitem__(self, k):
-        """Get value for key ``k``, raise ``KeyError`` if key doesn't exists in file.
+        """Get value for key ``k``, raise ``KeyError`` if the key doesn't exists in file.
         
         If possible, the data will be returned as a mmap'ed object."""
         if k not in self:
