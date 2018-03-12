@@ -3,9 +3,9 @@
 Internals
 =========
 
-:class:`mmapdict` files are :mod:`pickle` files, containing a dictionnary, but with a special format. The main idea is to have a file of predictable structure, to be able to compute the offsets for the memory maps. Moreover, there should be a way to disable a specific key, to either replace it or to delete it without changing the offset of the file.
+:class:`mmapdict` files are :mod:`pickle` files, containing a dictionary, but with a special format. The main idea is to have a file of predictable structure, to be able to compute the offsets for the memory maps. Moreover, a way to disable a specific key is required, either to replace it or to delete it without changing the offsets of the file.
 
-For example, for the following dictionnary:
+For example, for the following dictionary:
 
 ::
 
@@ -138,16 +138,16 @@ Let's look at what a :class:`mmappickle.dict` file looks like, for the same data
 We can note the following changes:
 
  *  There are hidden values at the beginning (``version = 1``, ``file revision = 2``)
- *  Each key-value couple is in an individual frame, which contain a hidden int (memo max index), finally a hidden TRUE.
+ *  Each key-value couple is in an individual frame, which contains a hidden int (memo max index), finally a hidden TRUE.
  *  The numpy array is created using ``numpy.core.fromnumeric.reshape(numpy.core.multiarray.from_string(data, dtype), shape)`` instead of the "traditionnal" way
 
-The ``version`` field is used to allow further improvements, and is fixed to 1 at present. 
-The file revision is increased each time a key of the dict is changed, to allow caching when there is concurrent access.
+The ``version`` field is used to allow further developments, and is fixed to 1 at present. 
+The file revision is increased each time a key of the dictionary is changed, to allow caching when there is concurrent access.
 Memo max index is used because there may be MEMOIZE/GET/PUT to renumber when pickling values. This is a cache to avoid having to parse all the file.
 
 Finally, the hidden TRUE is a "hack" to allow removing a key. 
 In fact, it is not possible to move data when it's memmap'ed. 
-To avoid this, the first TRUE is replaced by a POP when deleting the key. To summarize, the stack is working in the following way:
+To avoid this, the first TRUE is replaced by a POP when deleting the key. In summary, the stack is working in the following way:
 
 
  *  Key exists: ``KEY, VALUE, memo max index, POP, TRUE, POP.`` (reduced as ``KEY, VALUE``)
@@ -164,7 +164,7 @@ Extending ``mmappickle``
 
 To add support for a new memory mapped value type, one should create a new subclass :class:`mmappickle.picklers.base`.
 
-This require some knowledge of Python internal pickle format, but should be straightforward, using the numpy picklers as inspiration. Feel free to open an issue if more details are needed.
+This requires some knowledge of the Python internal pickle format, but should be straightforward, using the numpy picklers as inspiration. Feel free to open an issue if more details are required.
 
 Internal API Documentation
 **************************
@@ -192,7 +192,6 @@ Internal API Documentation
    :members:
    :member-order: bysource
    :special-members:
-   :undoc-members:
    :show-inheritance:
 
 
@@ -200,5 +199,4 @@ Internal API Documentation
    :members:
    :member-order: bysource
    :special-members:
-   :undoc-members:
    :show-inheritance:

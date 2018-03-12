@@ -6,7 +6,7 @@ import weakref
 from ..utils import * 
 
 class BasePickler:
-    """Picklers will be tried in decreasing priority order"""
+    """Picklers will be attempted in decreasing priority order"""
     priority = 0
     
     def __init__(self, parent_object):
@@ -33,13 +33,13 @@ class BasePickler:
         
     @save_file_position
     def read(self, offset, length):
-        """Return the unpickled object read from offset, and the length read. File position is kept."""
+        """Return the unpickled object read from offset, and the length read. The file position is kept."""
         raise NotImplementedError("Should be subclassed")
     
     @save_file_position
     def write(self, obj, offset, memo_start_idx = 0):
         """
-        Write the pickled object to the file stream, file position is kept.
+        Write the pickled object to the file stream, the file position is kept.
         
         Returns a tuple (number of bytes, last memo index)"""
         raise NotImplementedError("Should be subclassed")

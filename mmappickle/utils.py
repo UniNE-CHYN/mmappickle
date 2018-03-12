@@ -15,7 +15,7 @@ def save_file_position(f):
     return save_file_position_wrapper
 
 def require_writable(f):
-    """Require the object's _file to be writable, otherwise raise an error."""
+    """Require the object's _file to be writable, otherwise raise an exception."""
     @wraps(f)
     def require_writable_wrapper(self, *a, **kw):
         if not self._file.writable():

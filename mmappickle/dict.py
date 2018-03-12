@@ -65,7 +65,7 @@ class _header:
         
     @save_file_position
     def is_valid(self):
-        """:returns: True if file is a valid mmapdict pickle header, False otherwise."""        
+        """:returns: True if file has a valid mmapdict pickle header, False otherwise."""        
         self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         if self._file.read(1) != pickle.PROTO:
             warnings.warn("File is not a pickle file")
@@ -190,11 +190,11 @@ class _kvdata:
     
     The trick is that it should be either two values, key and value, or nothing, if the value is deleted.
     
-    To do this, we put on the stack the key, the value, and then we either push a NEWTRUE+POP (which results in a NO-OP),
+    To do this, we put the key and the value on the stack. Then we either push a NEWTRUE+POP (which results in a NO-OP),
     or we push a POP+POP (which removes both the key and the value). Since NEWTRUE and POP both have length 1, it is easy
     to make the substitution.
     
-    Another trick is that we cache the maximum value of the memoization index (for GET and PUT), to ensure that we have no duplicates.
+    Another trick is to cache the maximum value of the memoization index (for GET and PUT), to ensure that we have no duplicates.
     
     The _kvdata structure has the following pickle ops:
     
@@ -226,12 +226,12 @@ class _kvdata:
     
     @property
     def offset(self):
-        """:returns: the offset in file of the key-value data"""
+        """:returns: the offset in the file of the key-value data"""
         return self._offset
     
     @property
     def end_offset(self):
-        """:returns: the end-offset in file of the key-value data"""
+        """:returns: the end-offset in the file of the key-value data"""
         return self._offset + len(self)
     
     @property
@@ -245,7 +245,7 @@ class _kvdata:
         
         :returns: the frame length for this _kvdata.
         
-        This is done either by reading it in the file, or by computing it if it doesn't exists"""
+        This is done either by reading it in the file, or by computing it if it doesn't exist"""
         
         if not self._exists:
             return 2 + self.key_length + self.data_length + 1 + 4 + 1 + 1 + 1
@@ -648,9 +648,9 @@ class mmapdict:
         
         .. warning::
         
-            No mmap should exists on this file (both in this python script, and in others), as the data will be shifted.
+            No mmap should exist on this file (both in this python script, and in others), as the data will be shifted.
             
-            If a mmap exists, it could crash the process and/or corrupt the file and/or return invalid data.
+            If an mmap exists, it could crash the process and/or corrupt the file and/or return invalid data.
             
         
         """
@@ -741,8 +741,10 @@ class mmapdict:
     def fsck(self):
         """Attempt to fix the file, if possible.
         
-        This function should be called if some data could not be written to a file,
-        due to the lack of free disk space, as the resulting file has no termination.
+        This function should be called if some data could not be written to a file. This might be the case if,
+        for example, not enough disk space was available.
+        
+        This method truncates the file and recreates a valid terminator.
         
         .. warning::
           
