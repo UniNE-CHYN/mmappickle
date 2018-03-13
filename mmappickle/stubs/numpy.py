@@ -12,7 +12,7 @@ class EmptyNDArray:
     """
     
     def __init__(self, shape, dtype = numpy.float):
-        self._shape = shape
+        self._shape = tuple(int(x) for x in shape)
         self._dtype = numpy.dtype(dtype)
         
     @property
