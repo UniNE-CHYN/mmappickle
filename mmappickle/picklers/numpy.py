@@ -154,8 +154,8 @@ class MaskedArrayPickler(BasePickler):
         self._file.seek(offset, io.SEEK_SET)
         retlength = 0
         retlength += self._file.write(self._header)
-        retlength += self._array_pickler.write(obj.data, offset + retlength)[0]
-        retlength += self._array_pickler.write(obj.mask, offset + retlength)[0]
+        retlength += self._array_pickler.write(numpy.ma.getdata(obj), offset + retlength)[0]
+        retlength += self._array_pickler.write(numpy.ma.getmaskarray(obj), offset + retlength)[0]
         self._file.seek(offset + retlength)
         retlength += self._file.write(pickle.TUPLE2+pickle.REDUCE)
         

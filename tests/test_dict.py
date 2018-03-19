@@ -276,8 +276,19 @@ class TestDictNumpyArray(unittest.TestCase):
             self.assertIsInstance(m['test'].data, numpy.memmap)
             self.assertIsInstance(m['test'].mask, numpy.memmap)
             numpy.testing.assert_array_equal(m['test'], data)
-            self._dump_file(f)
             f.seek(0)
+            d = pickle.load(f)
+            numpy.testing.assert_array_equal(d['test'], data)
+            
+    def test_masked_empty(self):
+        with tempfile.TemporaryFile() as f:
+            data = numpy.ma.zeros([2, 3], dtype=numpy.int64)
+            m = mmapdict(f, picklers = [MaskedArrayPickler, ArrayPickler, GenericPickler])            
+            m['test'] = data           
+            self.assertIsInstance(m['test'], numpy.ma.masked_array)
+            self.assertIsInstance(m['test'].data, numpy.memmap)
+            self.assertIsInstance(m['test'].mask, numpy.memmap)            
+            numpy.testing.assert_array_equal(m['test'], data)
             d = pickle.load(f)
             numpy.testing.assert_array_equal(d['test'], data)
     
@@ -338,8 +349,6 @@ class TestConvert(unittest.TestCase):
             
             m = mmapdict(f, picklers = [GenericPickler])
             self.assertDictEqual(dict(m), d)
-            
-            self._dump_file(f)
             
     def test_broken(self):
         #FIXME: implement a test with a broken file, then .fsck() it
