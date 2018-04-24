@@ -11,11 +11,18 @@ else:
 
 long_description = open('README.md', 'r').read()
 
+def test_suite():
+    import unittest
+    test_loader = unittest.TestLoader()
+    test_suite = test_loader.discover('tests', pattern='test_*.py')
+    return test_suite
+
 _setup_data = {
     #Base information
     'name': 'mmappickle',
     'version': version_string,
     'packages': find_packages(),
+    'test_suite': 'setup.test_suite',
     
     #Description and classification
     'description': 'Mmappickle is a Python 3 library which enables storing large numpy arrays into a file, along with the associated metadata, and to retrieve it in such a way that the numpy array are memory-mapped (numpy.memmap) instead of copied into the system memory.',
