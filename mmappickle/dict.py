@@ -44,11 +44,13 @@ class _header:
     @save_file_position
     def exists(self):
         """
-        :returns: True if file contains at least two bytes
+        :returns: True if file contains something
         """
         self._file.seek(self._real_header_starts_at, io.SEEK_SET)
         newvalue = self._file.read(2)
-        return len(newvalue) == 2
+        if len(newvalue) == 0:
+            return False
+        return True
     
     @require_writable
     @save_file_position
@@ -155,7 +157,7 @@ class _terminator:
         self._mmapdict = weakref.ref(mmapdict)
         
         #Check if we have a valid header
-        if not self.exists:
+        if not self.exists and self._mmapdict()._header.is_valid():
             self.write()
         
     def __len__(self):
@@ -170,6 +172,9 @@ class _terminator:
     @save_file_position
     def exists(self):
         """:returns: True if the file ends with the terminator, False otherwise"""
+        self._file.seek(0, io.SEEK_END)
+        if self._file.tell() < len(self._data):
+            return False
         self._file.seek(-len(self._data), io.SEEK_END)
         newvalue = self._file.read(len(self._data))
         return newvalue == self._data
@@ -344,7 +349,7 @@ class _kvdata:
         if self._exists:
             raise RuntimeError("Cannot set key of an existing key-value entry")
         if type(newvalue) != int or newvalue < 0:
-            raise TypeError("memomaxidx should be a positive int")
+            raise ValueError("memomaxidx should be a positive int")
         self._cache['memomaxidx'] = newvalue
         self._write_if_allowed()
     
@@ -435,9 +440,6 @@ class mmapdict:
                 return cls.__subclasses__() + [g for s in cls.__subclasses__() for g in all_subclasses(s)]
             
             picklers = [x(self) for x in all_subclasses(BasePickler)]
-            if len(picklers) == 0:
-                from .picklers import GenericPickler
-                picklers = [x(self) for x in all_subclasses(BasePickler)]
         else:
             picklers = [x(self) for x in picklers]
         
@@ -700,7 +702,10 @@ class mmapdict:
         warnings.warn("Converting to new format... this may require a LOT of memory...")
         
         self._file.seek(0)
-        data = pickle.load(self._file)
+        try:
+            data = pickle.load(self._file)
+        except:
+            raise ValueError("Pickle could not be loaded! (not a pickle file?)")
         
         if type(data) != dict:
             raise ValueError("Could not load a pickle which is not a dictionnary")
@@ -754,6 +759,7 @@ class mmapdict:
         
         self._file.seek(2, io.SEEK_SET)
         frame_id = 0
+        valid = True
         while True:
             frame_start = self._file.tell()
             frame_id += 1
@@ -762,10 +768,16 @@ class mmapdict:
             
             data = self._file.read(9)
             if data[0] != pickle.FRAME[0]:
-                raise ValueError("Not on frame boundary")
+                print("Not on frame boundary")
+                self._file.seek(frame_start)
+                valid = False
+                break
+            
             frame_length = struct.unpack('<Q', data[1:9])[0]
-            if frame_start + 10 + frame_length > end_offset:
+            if frame_start + 9 + frame_length > end_offset:
                 print("Incomplete frame starting at {}".format(frame_start))
+                self._file.seek(frame_start)
+                valid = False
                 break
             
             if frame_id == 1:
@@ -776,15 +788,20 @@ class mmapdict:
             first_data = self._file.read(1)
             
             if first_data == pickle.DICT:
-                print("[terminator]")
                 self._file.seek(frame_start + frame_length + 9 - 1, io.SEEK_SET)
                 terminator = self._file.read(1)
-                if terminator != pickle.STOP:
-                    raise ValueError("Pickle doesn't end with stop!")
+                if terminator == pickle.STOP:
+                    print("[terminator]")
+                else:
+                    valid = False
+                    print("[terminator (invalid)]")
+                self._file.seek(frame_start, io.SEEK_SET)
                 break
             
             if first_data != pickle.SHORT_BINUNICODE:
-                print("Frame starts with {}".format(first_data))
+                print("[Unknown stuff starting with {}]".format(first_data))
+                self._file.seek(frame_start, io.SEEK_SET)
+                valid = False
                 break
             
             key_length = self._file.read(1)[0]
@@ -794,6 +811,7 @@ class mmapdict:
             
         self._file.truncate()
         self._terminator.write()
+        return valid
         
 
 if __name__ == '__main__':
