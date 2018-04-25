@@ -20,9 +20,10 @@ Contributing
 
 Please post issues and pull requests on github. Alternatively, you can also send your patches by email.
 
-mmappickle tests are run at each commit:
+The following tools are used to ensure good code quality:
 
 Tool         | Status
 ------------ | -------------
 travis-ci | [![Build Status](https://travis-ci.org/UniNE-CHYN/mmappickle.svg?branch=master)](https://travis-ci.org/UniNE-CHYN/mmappickle)
 AppVeyor | [![Build status](https://ci.appveyor.com/api/projects/status/rb3b0s0u6k8vmxfx?svg=true)](https://ci.appveyor.com/project/lfasnacht/mmappickle)
+Coveralls | [![Coverage Status](https://coveralls.io/repos/github/UniNE-CHYN/mmappickle/badge.svg?branch=master)](https://coveralls.io/github/UniNE-CHYN/mmappickle?branch=master)
