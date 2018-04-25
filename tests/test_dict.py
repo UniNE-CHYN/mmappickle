@@ -3,6 +3,7 @@ import tempfile
 import pickle
 import pickletools
 import io
+import os
 import numpy
 import numpy.testing
 
@@ -54,12 +55,17 @@ class TestDictBase(unittest.TestCase):
 
     def test_nonexistent(self):
         import os
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.close()
             os.unlink(f.name)
+            
             with self.assertRaises(FileNotFoundError):
-                d = mmapdict(f.name, True, picklers = [GenericPickler])
+                m = mmapdict(f.name, True, picklers = [GenericPickler])
             #This works and re-create the file
-            d = mmapdict(f.name, False, picklers = [GenericPickler])
+            m = mmapdict(f.name, False, picklers = [GenericPickler])
+            
+            del m
+            os.unlink(f.name)
             
     def test_notafile(self):
         import os
@@ -68,8 +74,10 @@ class TestDictBase(unittest.TestCase):
             
             
     def test_readonly(self):
-        with tempfile.NamedTemporaryFile() as f:
-            m = mmapdict(f, picklers = [GenericPickler])
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.close()
+            
+            m = mmapdict(f.name, picklers = [GenericPickler])
             m['test1'] = 234
             self.assertTrue(m.writable)
             
@@ -109,15 +117,18 @@ class TestDictBase(unittest.TestCase):
         
                 
     def _test_bad_file(self, d, exc=None):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
             f.write(d)
             f.flush()
+            f.close()
             
             if exc is not None:
                 with self.assertRaises(exc):
                     m = mmapdict(f.name, picklers = [GenericPickler])
             else:
                 m = mmapdict(f.name, picklers = [GenericPickler])
+                
+            os.unlink(f.name)
                 
     def test_bad_file_header_1(self):
         self._test_bad_file(b'\x80', ValueError)
@@ -327,13 +338,20 @@ class TestDict(unittest.TestCase):
             self.assertDictEqual(d, {'test': 'abc',})
             
     def test_readonly(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.close()
+            
             m = mmapdict(f.name, picklers = [GenericPickler])
             m['test'] = 'abc'
             self.assertEqual(m['test'], 'abc')
+            del m
+            
             
             m2 = mmapdict(f.name, readonly = True, picklers = [GenericPickler])
             self.assertEqual(m2['test'], 'abc')
+            del m2
+            
+            os.unlink(f.name)
             
     def test_store_ref(self):
         with tempfile.TemporaryFile() as f:
@@ -463,13 +481,19 @@ class TestDictNumpyArray(unittest.TestCase):
             numpy.testing.assert_array_equal(d['test'], data)
             
     def test_readonly(self):
-        with tempfile.NamedTemporaryFile() as f:
-            m = mmapdict(f, picklers = [ArrayPickler])
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.close()
+            
+            m = mmapdict(f.name, picklers = [ArrayPickler])
             m['test'] = numpy.zeros((1, ), dtype = numpy.float32)
             
             m2 = mmapdict(f.name, True, picklers = [ArrayPickler])
             with self.assertRaises(ValueError):
                 m2['test'][0] = 2
+                
+            del m
+            del m2
+            os.unlink(f.name)
                 
 
 def _tc_increment(args):
@@ -478,7 +502,9 @@ def _tc_increment(args):
     
 class TestConcurrent(unittest.TestCase):
     def test_concurrent_1(self):
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.close()
+            
             m = mmapdict(f.name)
             m['value'] = numpy.zeros((4, ), numpy.float)
             
@@ -491,12 +517,23 @@ class TestConcurrent(unittest.TestCase):
             self.assertEqual(m['value'][2], 1)
             self.assertEqual(m['value'][3], 1)
             
+            del m
+            
+            os.unlink(f.name)
+            
     def test_concurrent_mmapdict_pickle(self):
         #This is not a real test, but it fixes the converage computation since the previous test in not counted
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.close()
+            
             m = mmapdict(f.name)
             
             m2 = pickle.loads(pickle.dumps(m))
+            
+            del m
+            del m2
+            
+            os.unlink(f.name)
 
 class TestVacuum(unittest.TestCase):
     def _dump_file(self, f):
