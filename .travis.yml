@@ -10,6 +10,6 @@ install:
   - pip install .
   - pip install numpy
 script: 
-  - pytest
+  - pytest --cov=mmappickle
 after_success:
   - coveralls
