@@ -1,6 +1,31 @@
 import io
-import fcntl
 from functools import wraps
+
+def _lock_file(f):
+    import os
+    if os.name == 'nt':
+        import win32con, win32file, pywintypes
+        __overlapped = pywintypes.OVERLAPPED()
+        hfile = win32file._get_osfhandle(f.fileno())
+        win32file.LockFileEx(hfile, win32con.LOCKFILE_EXCLUSIVE_LOCK, 0, -0x10000, __overlapped)
+    elif os.name == 'posix':
+        import fcntl
+        fcntl.flock(f, fcntl.LOCK_EX)
+    else:
+        raise OSError("Unsupported OS")
+        
+def _unlock_file(f):
+    import os
+    if os.name == 'nt':
+        import win32con, win32file, pywintypes
+        __overlapped = pywintypes.OVERLAPPED()
+        hfile = win32file._get_osfhandle(f.fileno())
+        win32file.UnlockFileEx(hfile, 0, -0x10000, __overlapped)
+    elif os.name == 'posix':
+        import fcntl
+        fcntl.flock(f, fcntl.LOCK_UN)
+    else:
+        raise OSError("Unsupported OS")
 
 def save_file_position(f):
     """Decorator to save the object._file stream position before calling the method"""
@@ -33,7 +58,7 @@ def lock(f):
         
         if self._locked == 1:
             try:
-                fcntl.flock(self._file, fcntl.LOCK_EX)
+                _lock_file(self._file)
                 lock_failed = False
             except OSError:
                 #Cannot lock?
@@ -56,7 +81,7 @@ def lock(f):
                 if self.commit_number != self._cache_commit_number:
                     self._cache_commit_number = self.commit_number
                     self._file.flush()
-                fcntl.flock(self._file, fcntl.LOCK_UN)
+                _unlock_file(self._file)
             self._locked -= 1
     
     return lock_wrapper
