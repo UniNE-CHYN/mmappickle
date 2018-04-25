@@ -23,6 +23,7 @@ _setup_data = {
     'version': version_string,
     'packages': find_packages(),
     'test_suite': 'setup.test_suite',
+    'tests_require': ['numpy'],
     
     #Description and classification
     'description': 'Mmappickle is a Python 3 library which enables storing large numpy arrays into a file, along with the associated metadata, and to retrieve it in such a way that the numpy array are memory-mapped (numpy.memmap) instead of copied into the system memory.',
@@ -49,10 +50,10 @@ _setup_data = {
     'license': 'LGPLv3',
 
     #Requirements
-    'python_requires': '>=3',
+    'python_requires': '>=3.4',
     #Numpy is required to have memmap array, but it still makes sense to use this module
     #without it, so it is not a requirement per-se.
-    'requires': [],
+    'install_requires': [],
 }
 
 if __name__ == '__main__':
