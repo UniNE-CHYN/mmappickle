@@ -474,19 +474,22 @@ class TestDictNumpyArray(unittest.TestCase):
 
 def _tc_increment(args):
     m, idx = args
-    m['value'][0] += 1
+    m['value'][idx] += 1
     
 class TestConcurrent(unittest.TestCase):
     def test_concurrent_1(self):
         with tempfile.NamedTemporaryFile() as f:
             m = mmapdict(f.name)
-            m['value'] = numpy.zeros((1, ), numpy.float)
+            m['value'] = numpy.zeros((4, ), numpy.float)
             
             import multiprocessing, itertools
             with multiprocessing.Pool(4) as p:
                 p.map(_tc_increment, itertools.product([m], range(4)))
                 
-            self.assertEqual(m['value'], 4)
+            self.assertEqual(m['value'][0], 1)
+            self.assertEqual(m['value'][1], 1)
+            self.assertEqual(m['value'][2], 1)
+            self.assertEqual(m['value'][3], 1)
             
     def test_concurrent_mmapdict_pickle(self):
         #This is not a real test, but it fixes the converage computation since the previous test in not counted
