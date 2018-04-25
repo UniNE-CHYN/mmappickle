@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 import re
+import os
 
 version_data = open("mmappickle/_version.py", "r").read()
 mo = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_data, re.M)
@@ -17,13 +18,18 @@ def test_suite():
     test_suite = test_loader.discover('tests', pattern='test_*.py')
     return test_suite
 
+if os.name == 'nt':
+    platform_requirements = ['pywin32']
+else:
+    platform_requirements = []
+
 _setup_data = {
     #Base information
     'name': 'mmappickle',
     'version': version_string,
     'packages': find_packages(),
     'test_suite': 'setup.test_suite',
-    'tests_require': ['numpy'],
+    'tests_require': ['numpy'] + platform_requirements,
     
     #Description and classification
     'description': 'Mmappickle is a Python 3 library which enables storing large numpy arrays into a file, along with the associated metadata, and to retrieve it in such a way that the numpy array are memory-mapped (numpy.memmap) instead of copied into the system memory.',
@@ -53,7 +59,7 @@ _setup_data = {
     'python_requires': '>=3.4',
     #Numpy is required to have memmap array, but it still makes sense to use this module
     #without it, so it is not a requirement per-se.
-    'install_requires': [],
+    'install_requires': [] + platform_requirements,
 }
 
 if __name__ == '__main__':
