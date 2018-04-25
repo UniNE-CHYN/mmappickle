@@ -12,11 +12,13 @@ else:
 
 long_description = open('README.md', 'r').read()
 
+
 def test_suite():
     import unittest
     test_loader = unittest.TestLoader()
     test_suite = test_loader.discover('tests', pattern='test_*.py')
     return test_suite
+
 
 if os.name == 'nt':
     platform_requirements = ['pywin32']
@@ -24,41 +26,43 @@ else:
     platform_requirements = []
 
 _setup_data = {
-    #Base information
+    # Base information
     'name': 'mmappickle',
     'version': version_string,
     'packages': find_packages(),
     'test_suite': 'setup.test_suite',
     'tests_require': ['numpy'] + platform_requirements,
-    
-    #Description and classification
-    'description': 'Mmappickle is a Python 3 library which enables storing large numpy arrays into a file, along with the associated metadata, and to retrieve it in such a way that the numpy array are memory-mapped (numpy.memmap) instead of copied into the system memory.',
+
+    # Description and classification
+    'description': 'Mmappickle is a Python 3 library which enables storing large numpy arrays into a file, along with the associated metadata, and to ' + \
+    'retrieve it in such a way that the numpy array are memory-mapped (numpy.memmap) instead of copied into the system memory.',
+
     'long_description': long_description,
     'long_description_content_type': 'text/markdown',
     'classifiers': [
         'Intended Audience :: Developers',
-        'Intended Audience :: Science/Research', 
+        'Intended Audience :: Science/Research',
         'Development Status :: 5 - Production/Stable',
         'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)'
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6'        
+        'Programming Language :: Python :: 3.6'
     ],
-    
-    #Author and license...
+
+    # Author and license...
     'author': "Laurent Fasnacht",
-    'author_email': "l@libres.ch", 
+    'author_email': "l@libres.ch",
     'maintainer': "Laurent Fasnacht",
-    'maintainer_email': "l@libres.ch", 
+    'maintainer_email': "l@libres.ch",
     'url': 'https://github.com/UniNE-CHYN/mmappickle',
     'license': 'LGPLv3',
 
-    #Requirements
+    # Requirements
     'python_requires': '>=3.4',
-    #Numpy is required to have memmap array, but it still makes sense to use this module
-    #without it, so it is not a requirement per-se.
+    # Numpy is required to have memmap array, but it still makes sense to use this module
+    # without it, so it is not a requirement per-se.
     'install_requires': [] + platform_requirements,
 }
 

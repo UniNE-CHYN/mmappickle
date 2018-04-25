@@ -8,5 +8,5 @@ try:
     __all__.append('ArrayPickler')
     __all__.append('MaskedArrayPickler')
 except ImportError:
-    #No numpy, just ignore what would not be loadable
+    # No numpy, just ignore what would not be loadable
     pass
