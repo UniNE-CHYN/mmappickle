@@ -15,12 +15,12 @@ environment:
 
 install:
   - "%PYTHON%\\scripts\\conda.exe config --set always_yes true"
-  - "%PYTHON%\\scripts\\conda.exe install numpy"
+  - "%PYTHON%\\scripts\\conda.exe install numpy pytest"
 
 build: off
 
 test_script:
-  - "%PYTHON%\\python.exe setup.py test"
+  - "%PYTHON%\\python.exe -m pytest"
 
 artifacts:
   - path: dist\*
