@@ -131,30 +131,3 @@ Please use `mmappickle issue tracker on GitHub <https://github.com/UniNE-CHYN/mm
 
 To report bugs, please see :ref:`reporting-bugs`.
 
-
-Documentation contents
-----------------------
-
-.. toctree::
-   :maxdepth: 0
-   :hidden:
-
-   index
-
-.. toctree::
-   :maxdepth: 2
-
-   install
-   api
-   internals
-   contributing
-
-
-
-Indices and tables
-------------------
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-

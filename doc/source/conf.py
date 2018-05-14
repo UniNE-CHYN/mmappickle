@@ -49,7 +49,7 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = 'index'
+master_doc = 'toc'
 
 # General information about the project.
 project = 'mmappickle'
@@ -104,7 +104,6 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
-
 # -- Options for HTML output ----------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -114,9 +113,7 @@ html_theme = 'default'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {
-    'navigation_depth': 2
-}
+# html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -276,3 +273,13 @@ intersphinx_mapping = {'http://docs.python.org/': None,
                        'numpy': ('http://docs.scipy.org/doc/numpy/', None),}
 
 todo_include_todos = True
+
+_context_config = {
+    'master_doc': 'index',
+}
+
+def setup(app):
+    app.connect('html-page-context', html_page_context)
+
+def html_page_context(app, pagename, templatename, context, doctree):
+    context.update(_context_config)
