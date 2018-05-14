@@ -10,36 +10,36 @@ It supports any type of value, but it is only possible to memory map :class:`num
 It also supports concurrent access (i.e. you can pass a :class:`mmappickle.mmapdict` as an argument which is called using the :mod:`multiprocessing` Python module).
 
 Why use mmappickle?
-===================
+-------------------
 
 ``Mmappickle`` is designed for "unstructured" parallel access, with a strong emphasis on adding new data.
 
 Here are two example uses cases:
 
 - Timelapse hyperspectral scanning
-  
+
   At each time interval, an hyperspectral image (which is numpy array of a few hundreds of megabytes) is added to the file, along with the related metadata.
-  
+
   The key features for which ``mmappickle`` is useful are:
-  
+
   - is that it is possible to have an independant viewer process, which is monitoring the file as it is appended, and allows the operator to stop the capture once sufficient data was acquired.
   - all the information is kept in one file, which makes it easier to archive and distribute.
   - the images are not stored in RAM, which would be a problem due to their size.
-  
+
   Moreover, as the file is a normal :mod:`pickle`, it is not required to install anything more than a standard distribution of Python to have it work. This is useful when distributing files to occasional users, which may be less familiar with Python, and may not be able to use ``pip`` to install libraries.
-  
+
 - Image registration
 
   When having multiples (hyperspectral) images of the same subject, a common requirement is to `register <https://en.wikipedia.org/wiki/Image_registration>`_ these images to allow creating a combined image containing the information of all of them. Depending on the images, this could be for example HDR imaging, or simply stitching the images together.
-  
+
   Commonly, a set of files are provided to the algorithm, which computes keypoints, then the transformation parameters, and finally creates an output file. Due to practical reasons intermediate data is rarely kept, as it means more files, and also that the references to the original files must be strictly kept.
-  
+
   With ``mmappickle``, all the input images are in one file. The registration algorithm can simply add the keypoints and the transformation parameters to the original file. This simplifies debugging and also serves as a cache when using successively different combining algorithms.
-  
+
 
 
 Quick start
-===========
+-----------
 
 :class:`mmappickle.mmapdict` behaves like a dictionary. For example:
 
@@ -125,7 +125,7 @@ Finally, one last useful trick is the :meth:`mmappickle.mmapdict.vacuum` method.
 
 
 Getting help
-============
+------------
 
 Please use `mmappickle issue tracker on GitHub <https://github.com/UniNE-CHYN/mmappickle/issues>`_ to ask any question.
 
@@ -133,7 +133,13 @@ To report bugs, please see :ref:`reporting-bugs`.
 
 
 Documentation contents
-======================
+----------------------
+
+.. toctree::
+   :maxdepth: 0
+   :hidden:
+
+   index
 
 .. toctree::
    :maxdepth: 2
@@ -142,7 +148,7 @@ Documentation contents
    api
    internals
    contributing
-   
+
 
 
 Indices and tables

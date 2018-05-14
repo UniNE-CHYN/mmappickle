@@ -61,7 +61,7 @@ copyright = '2018, Laurent Fasnacht'
 #
 # The short X.Y version.
 version_data = open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'mmappickle', '_version.py'), 'r').read()
-mo = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_data, re.M)     
+mo = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_data, re.M)
 version = mo.group(1)
 # The full version, including alpha/beta/rc tags.
 release = mo.group(1)
@@ -114,7 +114,9 @@ html_theme = 'default'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = html_theme_options = {
+    'navigation_depth': 2
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
