@@ -16,11 +16,12 @@ environment:
 install:
   - "%PYTHON%\\scripts\\conda.exe config --set always_yes true"
   - "%PYTHON%\\scripts\\conda.exe install numpy pytest"
+  - "%PYTHON%\\scripts\\conda.exe install -c conda-forge pytest-cov"
 
 build: off
 
 test_script:
-  - "%PYTHON%\\python.exe -m pytest"
+  - "%PYTHON%\\python.exe -m pytest --cov=mmappickle --cov-report=term-missing"
 
 artifacts:
   - path: dist\*
