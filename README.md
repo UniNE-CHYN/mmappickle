@@ -15,6 +15,11 @@ Documentation
 
 Documentation is available at http://mmappickle.readthedocs.io/
 
+Citation
+========
+
+> Fasnacht, (2018). **mmappickle: Python 3 module to store memory-mapped numpy array in pickle format** . *Journal of Open Source Software*, 3(26), 651, https://doi.org/10.21105/joss.00651
+
 Contributing
 ============
 
