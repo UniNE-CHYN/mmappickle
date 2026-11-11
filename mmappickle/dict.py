@@ -493,7 +493,7 @@ class mmapdict:
         return self._file.writable()
 
     @property
-    @lock
+    @lock()
     def commit_number(self):
         """The monotonically increasing commit number of the :class:`mmapdict`.
 
@@ -506,7 +506,7 @@ class mmapdict:
         return self._header.commit_number
 
     @commit_number.setter
-    @lock
+    @lock(write=True)
     def commit_number(self, newvalue):
         self._header.commit_number = newvalue
 
@@ -515,7 +515,7 @@ class mmapdict:
         self._cache_kv_all = None
 
     @property
-    @lock
+    @lock()
     @save_file_position
     def _kv_all(self):
         # Get all key-value couples in file
@@ -532,7 +532,7 @@ class mmapdict:
         return self._cache_kv_all
 
     @property
-    @lock
+    @lock()
     @save_file_position
     def _kv(self):
         # Get only valid key-values couples in file
@@ -544,7 +544,7 @@ class mmapdict:
 
         return self._cache_kv
 
-    @lock
+    @lock()
     def __contains__(self, k):
         """Check if a key exists in dictionnary
 
@@ -553,13 +553,13 @@ class mmapdict:
         """
         return k in self._kv
 
-    @lock
+    @lock()
     def keys(self):
         """:returns: a set-like object providing a view on D's keys"""
         return self._kv.keys()
 
     @require_writable
-    @lock
+    @lock(write=True)
     @save_file_position
     def __setitem__(self, k, v):
         """Create or change key ``k``, sets its value to ``v``.
@@ -596,7 +596,7 @@ class mmapdict:
         self._cache_kv_all.append(kv)
         self.commit_number += 1
 
-    @lock
+    @lock()
     def __getitem__(self, k):
         """Get value for key ``k``, raise ``KeyError`` if the key doesn't exists in file.
 
@@ -617,7 +617,7 @@ class mmapdict:
         return pickler.read(data_offset, data_length)[0]
 
     @require_writable
-    @lock
+    @lock(write=True)
     @save_file_position
     def __delitem__(self, k):
         """Mark key ``k`` as not valid in the file.
@@ -639,7 +639,7 @@ class mmapdict:
         self.commit_number += 1
 
     @require_writable
-    @lock
+    @lock(write=True)
     @save_file_position
     def vacuum(self, chunk_size=1048576):
         """

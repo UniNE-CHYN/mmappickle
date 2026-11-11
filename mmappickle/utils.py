@@ -2,7 +2,7 @@ import io
 from functools import wraps
 
 
-def _lock_file(f):
+def _lock_file(f, exclusive):
     import os
     if os.name == 'nt':
         import win32con
@@ -10,10 +10,12 @@ def _lock_file(f):
         import pywintypes
         __overlapped = pywintypes.OVERLAPPED()
         hfile = win32file._get_osfhandle(f.fileno())
-        win32file.LockFileEx(hfile, win32con.LOCKFILE_EXCLUSIVE_LOCK, 0, -0x10000, __overlapped)
+        dwFlags = win32con.LOCKFILE_EXCLUSIVE_LOCK if exclusive else 0
+        win32file.LockFileEx(hfile, dwFlags, 0, -0x10000, __overlapped)
     elif os.name == 'posix':
         import fcntl
-        fcntl.flock(f, fcntl.LOCK_EX)
+        op = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
+        fcntl.flock(f, op)
     else:
         raise OSError("Unsupported OS")
 
@@ -59,38 +61,45 @@ def require_writable(f):
     return require_writable_wrapper
 
 
-def lock(f):
-    """Lock the file during the execution of this method. This is a re-entrant lock."""
-    @wraps(f)
-    def lock_wrapper(self, *a, **kw):
-        self._locked += 1
+def lock(write=False):
+    """
+    Lock the file during the execution of this method. This is a re-entrant lock.
 
-        if self._locked == 1:
-            try:
-                _lock_file(self._file)
-                lock_failed = False
-            except OSError:
-                # Cannot lock?
-                lock_failed = True
-            except ValueError:
-                # Cannot lock? not a valid file descriptor
-                lock_failed = True
+    :param write: If True, uses an exclusive lock for write access to the file. If False, a shared lock is used that enables simultaneous access from multiple processes.
+    :return: The actual decorator function.
+    """
+    def decorator(f):
+        @wraps(f)
+        def lock_wrapper(self, *a, **kw):
+            self._locked += 1
 
-            if self._cache_commit_number != self.commit_number:
-                self._cache_clear()
-                self._cache_commit_number = self.commit_number
-
-            if lock_failed:
-                self._locked = 0
-
-        try:
-            return f(self, *a, **kw)
-        finally:
             if self._locked == 1:
-                if self.commit_number != self._cache_commit_number:
-                    self._cache_commit_number = self.commit_number
-                    self._file.flush()
-                _unlock_file(self._file)
-            self._locked -= 1
+                try:
+                    _lock_file(self._file, write)
+                    lock_failed = False
+                except OSError:
+                    # Cannot lock?
+                    lock_failed = True
+                except ValueError:
+                    # Cannot lock? not a valid file descriptor
+                    lock_failed = True
 
-    return lock_wrapper
+                if self._cache_commit_number != self.commit_number:
+                    self._cache_clear()
+                    self._cache_commit_number = self.commit_number
+
+                if lock_failed:
+                    self._locked = 0
+
+            try:
+                return f(self, *a, **kw)
+            finally:
+                if self._locked == 1:
+                    if self.commit_number != self._cache_commit_number:
+                        self._cache_commit_number = self.commit_number
+                        self._file.flush()
+                    _unlock_file(self._file)
+                self._locked -= 1
+
+        return lock_wrapper
+    return decorator
